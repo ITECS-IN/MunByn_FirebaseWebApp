@@ -79,7 +79,7 @@ const KpiSummaryRow = () => {
     // Set up real-time listener
     const unsubscribe = onSnapshot(
       packagesCollection,
-      async (snapshot) => {
+      async () => {
         try {
           console.log('Firebase data changed, updating KPI data...');
           

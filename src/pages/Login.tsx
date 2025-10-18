@@ -8,7 +8,7 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [isRegister, setIsRegister] = useState(false)
+  const [isRegister] = useState(false)
   const { login, register, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
