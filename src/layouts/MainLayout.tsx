@@ -30,12 +30,12 @@ const MainLayout = () => {
             
             <header className="bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex">
-                            <div className="flex-shrink-0 flex items-center">
-                                <span className="text-xl font-bold">📦 Delivery Tracking</span>
+                    <div className="flex flex-col sm:flex-row justify-between py-3 sm:h-16">
+                        <div className="flex flex-col sm:flex-row items-center">
+                            <div className="flex-shrink-0 flex items-center sm:mb-0">
+                                <span className="text-lg sm:text-xl font-bold">📦 Delivery Tracking</span>
                             </div>
-                            <nav className="ml-6 flex space-x-8">
+                            <nav className="hidden sm:flex space-x-4 sm:ml-6 sm:space-x-8 mt-2 sm:mt-0">
                                 <NavLink 
                                     to="/" 
                                     className={({ isActive }) => 
@@ -51,9 +51,12 @@ const MainLayout = () => {
                                 </NavLink>
                             </nav>
                         </div>
-                        <div className="flex items-center">
+                        <div className="hidden sm:flex items-center justify-center sm:justify-end mt-3 sm:mt-0">
                             <div className="flex-shrink-0">
-                                <span className="text-sm font-medium text-gray-500">
+                                <span className="text-sm font-medium text-gray-500 flex items-center">
+                                    <div className="mr-2 w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-semibold">
+                                        {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                                    </div>
                                     {user?.name || user?.email || 'User'}
                                 </span>
                             </div>
