@@ -1,23 +1,23 @@
+import { DatePicker } from "@/components/ui/date-picker"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { db } from '@/config/firebase'
+import { collection, deleteDoc, getDocs } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
-import { useAuth } from '../contexts/useAuth'
-import { Button } from '../components/ui/button'
+import toast from 'react-hot-toast'
 import DashboardHeader from '../components/DashboardHeader'
 import KpiSummaryRow from '../components/KpiSummaryRow'
+import { Button } from '../components/ui/button'
+import { useAuth } from '../contexts/useAuth'
 import { useFirestoreSearchWithServerSidePagination, type SearchFilter } from './useFirestoreSearchWithServerSidePagination'
-import { db } from '@/config/firebase'
-import { collection, deleteDoc, DocumentReference, getDocs, type DocumentData } from 'firebase/firestore'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog"
-import { DatePicker } from "@/components/ui/date-picker"
-import toast from 'react-hot-toast'
 
 const Home = () => {
   const { user, logout } = useAuth();
@@ -60,7 +60,7 @@ const {
     db,
     "packages",
     {
-      pageSize: 10,
+      pageSize: 50,
       filters: filters as SearchFilter[],
       withTotalCount: true,
     }
@@ -351,13 +351,6 @@ const {
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200">
-        {loading && ( 
-          <tr>
-            <td colSpan={4} className="py-4 px-4 text-center text-sm text-gray-500">
-              Loading...
-            </td>
-          </tr>
-        )}
         {error && (
           <tr>
             <td colSpan={4} className="py-4 px-4 text-center text-sm text-red-500">
@@ -372,7 +365,11 @@ const {
             </td>
           </tr>
         )}
-        {packages.map((pkg, index) => (
+        {loading ?   <tr>
+            <td colSpan={4} className="py-4 px-4 text-center text-sm text-gray-500">
+              Loading...
+            </td>
+          </tr> : packages.map((pkg, index) => (
           <tr key={index} className="hover:bg-gray-50">
             <td className="py-3 px-4 text-sm text-gray-900">{index + 1 + (page - 1) * 10}</td>
             <td className="py-3 px-4 text-sm text-gray-900">{pkg.tracking}</td>
