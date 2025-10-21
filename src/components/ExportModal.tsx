@@ -202,12 +202,12 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       
       // Process the results
       interface TrackingItem {
-        id: string;
+        // id: string;
         tracking: string;
         carrier: string;
         timestamp: string | number | Date;
-        date: string;
-        time: string;
+        // date: string;
+        // time: string;
       }
       
       const items: TrackingItem[] = [];
@@ -256,27 +256,27 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           console.log('Including item with carrier:', carrierName, 'Selected:', selectedCarrier);
         }
         
-        // Format date and time
-        let formattedDate = '';
-        let formattedTime = '';
+        // // Format date and time
+        // let formattedDate = '';
+        // let formattedTime = '';
         
-        if (data.timestamp) {
-          try {
-            const date = new Date(data.timestamp);
-            formattedDate = format(date, 'MMM dd, yyyy');
-            formattedTime = format(date, 'hh:mm a');
-          } catch (e) {
-            console.error('Error parsing date:', e);
-          }
-        }
+        // if (data.timestamp) {
+        //   try {
+        //     const date = new Date(data.timestamp);
+        //     // formattedDate = format(date, 'MMM dd, yyyy');
+        //     // formattedTime = format(date, 'hh:mm a');
+        //   } catch (e) {
+        //     console.error('Error parsing date:', e);
+        //   }
+        // }
         
         items.push({
-          id: doc.id,
+          // id: doc.id,
           tracking: data.tracking || 'Unknown',
           carrier: carrierName,
           timestamp: data.timestamp || '',
-          date: formattedDate,
-          time: formattedTime
+          // date: formattedDate,
+          // time: formattedTime
         });
       });
       
@@ -294,10 +294,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       }
       
       // Generate CSV content
-      let csvContent = 'Tracking Number,Carrier,Date,Time\n';
+      let csvContent = 'Tracking Number,Carrier,Timestamp\n';
       
       items.forEach(item => {
-        csvContent += `${item.tracking},${item.carrier},${item.date},${item.time}\n`;
+        csvContent += `${item.tracking},${item.carrier},${item.timestamp}\n`;
       });
       
       // Create a blob and download the CSV

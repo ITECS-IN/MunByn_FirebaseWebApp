@@ -19,7 +19,7 @@ interface CarrierBreakdown {
 interface KpiData {
   totalScansToday: number;
   totalScansThisMonth: number;
-  activeCarriers: number;
+  // activeCarriers: number;
   averageDailyScans: number;
   lastSyncTime: string;
   todayCarrierBreakdown: CarrierBreakdown;
@@ -61,7 +61,7 @@ const KpiSummaryRow = () => {
   const [kpiData, setKpiData] = useState<KpiData>({
     totalScansToday: 0,
     totalScansThisMonth: 0,
-    activeCarriers: 0,
+    // activeCarriers: 0,
     averageDailyScans: 0,
     lastSyncTime: '',
     todayCarrierBreakdown: {},
@@ -94,7 +94,7 @@ const KpiSummaryRow = () => {
           const mockData: KpiData = {
             totalScansToday: 327,
             totalScansThisMonth: 4215,
-            activeCarriers: 3,
+            // activeCarriers: 3,
             averageDailyScans: 140,
             lastSyncTime: format(new Date(), 'HH:mm:ss'),
             todayCarrierBreakdown: {
@@ -177,7 +177,7 @@ const KpiSummaryRow = () => {
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
         <KpiCard
           title="Total Scans Today"
           value={formatNumber(kpiData.totalScansToday)}
@@ -192,12 +192,12 @@ const KpiSummaryRow = () => {
           isLoading={isLoading}
         />
         
-        <KpiCard
+        {/* <KpiCard
           title="Active Carriers"
           value={kpiData.activeCarriers}
           description="Count of carriers with scans"
           isLoading={isLoading}
-        />
+        /> */}
         
         <KpiCard
           title="Average Daily Scans"
