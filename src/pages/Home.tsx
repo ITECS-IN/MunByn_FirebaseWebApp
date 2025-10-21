@@ -340,17 +340,17 @@ const {
         </DialogContent>
       </Dialog>
 
-  <div className="overflow-x-auto rounded-lg shadow-md">
+  <div className="overflow-x-auto rounded-lg shadow-md !h-[500px] !overflow-auto">
     <table className="min-w-full bg-white">
-      <thead className="bg-gray-100">
+      <thead className="bg-gray-100 sticky top-0  ">
         <tr>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">#</th>
+          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">S.No</th>
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Tracking Number</th>
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Carrier</th>
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Timestamp</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-200">
+      <tbody className="divide-y divide-gray-200 ">
         {error && (
           <tr>
             <td colSpan={4} className="py-4 px-4 text-center text-sm text-red-500">
