@@ -70,8 +70,10 @@ export function useFirestoreSearchWithServerSidePagination<T = DocumentData>(
   collectionPath: string,
   {
     pageSize = 10,
-    orderByField,
-    direction = "asc",
+    //orderByField,
+    //direction = "asc",
+    orderByField = "timestamp",
+    direction = "desc",
     withTotalCount = true,
     filters = [],
   }: Options = {}

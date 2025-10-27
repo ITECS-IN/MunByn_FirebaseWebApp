@@ -110,9 +110,18 @@ export const fetchKpiData = async (): Promise<KpiData> => {
     const activeCarriers = Object.keys(monthCarrierBreakdown).length;
     
     // Calculate average daily scans for the month
-    const dayOfMonth = today.getDate();
-    const averageDailyScans = Math.round(monthScans.length / dayOfMonth);
-    
+    // const dayOfMonth = today.getDate();
+    // const averageDailyScans = Math.round(monthScans.length / dayOfMonth);
+   
+    // NEW LOGIC — Use unique scan days instead of dayOfMonth
+    const uniqueScanDays = new Set<string>();
+    monthScans.forEach(scan => {
+      if (scan.dateYmd) uniqueScanDays.add(scan.dateYmd);
+    });
+    const daysWithScans = uniqueScanDays.size || 1; // avoid divide-by-zero
+    const averageDailyScans = Math.round(monthScans.length / daysWithScans);
+   
+   
     // Get last sync time - use the most recent timestamp from the scans
     let lastSyncTime = format(new Date(), 'HH:mm:ss');
     

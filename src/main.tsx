@@ -5,6 +5,7 @@ import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
 import Home from './pages/Home';
+import Admin from './pages/Admin';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute, PublicRoute } from './components/AuthRoute';
 
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Home />
+      },
+      {
+        path: "admin",          
+        element: <Admin />      
       },
     ],
   }

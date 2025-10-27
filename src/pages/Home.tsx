@@ -223,7 +223,7 @@ const {
 
   <h2 className="text-xl font-semibold mb-3">Recent Packages</h2>
       <div className="flex flex-col space-y-4 mb-6 bg-white p-6 rounded-lg shadow-md">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Tracking input */}
           <div className="col-span-1">
             <div className="relative">
@@ -266,6 +266,7 @@ const {
           </div>
           
           {/* Delete by range button */}
+          {/*
           <div className="col-span-1 flex items-end">
             <Button 
               variant="destructive" 
@@ -278,10 +279,14 @@ const {
               Delete by Date Range
             </Button>
           </div>
+          */}
+          
         </div>
       </div>
 
+
       {/* Delete Modal using shadcn Dialog */}
+      {/*
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent>
           <DialogHeader>
@@ -339,6 +344,7 @@ const {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      */}
 
   <div className="overflow-x-auto rounded-lg shadow-md !h-[500px] !overflow-auto">
     <table className="min-w-full bg-white">
