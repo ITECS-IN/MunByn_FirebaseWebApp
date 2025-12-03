@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { getDeviceLabel } from '../config/deviceLabels';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -206,10 +207,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         tracking: string;
         carrier: string;
         timestamp: string | number | Date;
+        deviceId: string;
+        latitude: string;
+        longitude: string;
+        username: string;
         // date: string;
         // time: string;
       }
-      
+
       const items: TrackingItem[] = [];
       
       querySnapshot.forEach(doc => {
@@ -274,7 +279,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           // id: doc.id,
           tracking: data.tracking || 'Unknown',
           carrier: carrierName,
-          timestamp: data.timestamp || '',
+          timestamp: data.timestamp || 'N/A',
+          deviceId: getDeviceLabel(data.deviceId),
+          latitude: data.latitude?.toString() || 'N/A',
+          longitude: data.longitude?.toString() || 'N/A',
+          username: data.username || 'N/A',
           // date: formattedDate,
           // time: formattedTime
         });
@@ -293,11 +302,21 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         return;
       }
       
-      // Generate CSV content
-      let csvContent = 'Tracking Number,Carrier,Timestamp\n';
-      
+      // Generate CSV content with proper escaping and formatting
+      // Use quotes around all values to ensure proper Excel handling
+      let csvContent = 'Tracking Number,Carrier,Timestamp,Device ID,Latitude,Longitude,Username\n';
+
       items.forEach(item => {
-        csvContent += `${item.tracking},${item.carrier},${item.timestamp}\n`;
+        // Wrap tracking number in quotes and use ="value" format to force Excel to treat it as text
+        const trackingNumber = `"${item.tracking}"`;
+        const carrier = `"${item.carrier.replace(/"/g, '""')}"`;
+        const timestamp = `"${item.timestamp}"`;
+        const deviceId = `"${item.deviceId}"`;
+        const latitude = `"${item.latitude}"`;
+        const longitude = `"${item.longitude}"`;
+        const username = `"${item.username}"`;
+
+        csvContent += `${trackingNumber},${carrier},${timestamp},${deviceId},${latitude},${longitude},${username}\n`;
       });
       
       // Create a blob and download the CSV

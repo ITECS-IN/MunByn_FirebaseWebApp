@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { db } from '@/config/firebase'
+import { getDeviceLabel } from '@/config/deviceLabels'
 import { collection, deleteDoc, getDocs } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -22,10 +23,12 @@ import { useFirestoreSearchWithServerSidePagination, type SearchFilter } from '.
 const Home = () => {
   const { user, logout } = useAuth();
   const [availableCarriers, setAvailableCarriers] = useState<string[]>([]);
+  const [availableDevices, setAvailableDevices] = useState<string[]>([]);
 
   const [tracking, setTracking] = useState("");
   const [carrier, setCarrier] = useState("all"); // Initialize with "all" instead of empty string
-  
+  const [deviceId, setDeviceId] = useState("all"); // Device ID filter
+
   // State for the delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -37,6 +40,8 @@ const Home = () => {
   if (tracking) filters.push({ field: "tracking", op: "startsWith", value: tracking });
   // Only add carrier filter if it's not the "all" value
   if (carrier && carrier !== "all") filters.push({ field: "carrier", op: "==", value: carrier });
+  // Only add device ID filter if it's not the "all" value
+  if (deviceId && deviceId !== "all") filters.push({ field: "deviceId", op: "==", value: deviceId });
 
 
 const {
@@ -56,6 +61,10 @@ const {
     tracking: string;
     carrier: string;
     timestamp: string;
+    deviceId?: string;
+    latitude?: number;
+    longitude?: number;
+    username?: string;
   }>(
     db,
     "packages",
@@ -71,12 +80,12 @@ const {
       try {
         const packagesCollection = collection(db, 'packages');
         const packagesSnapshot = await getDocs(packagesCollection);
-        
+
         const carriers = new Set<string>();
-        
+
         packagesSnapshot.forEach(doc => {
           const data = doc.data();
-  
+
           // Extract carrier name
           let carrierName: string;
           if (typeof data.carrier === 'string') {
@@ -86,13 +95,35 @@ const {
           } else {
             carrierName = 'Unknown';
           }
-          
+
           carriers.add(carrierName);
         });
-        
+
         setAvailableCarriers(Array.from(carriers).sort());
       } catch (err) {
         console.error('Error fetching carriers:', err);
+      }
+    }, []);
+
+   const fetchAllDevices = useCallback(async () => {
+      try {
+        const packagesCollection = collection(db, 'packages');
+        const packagesSnapshot = await getDocs(packagesCollection);
+
+        const devices = new Set<string>();
+
+        packagesSnapshot.forEach(doc => {
+          const data = doc.data();
+
+          // Extract device ID
+          if (data.deviceId && typeof data.deviceId === 'string') {
+            devices.add(data.deviceId);
+          }
+        });
+
+        setAvailableDevices(Array.from(devices).sort());
+      } catch (err) {
+        console.error('Error fetching devices:', err);
       }
     }, []);
 
@@ -100,11 +131,12 @@ const {
   useEffect(() => {
     const t = setTimeout(() => reset(), 500); // wait 500ms after typing
     return () => clearTimeout(t);
-  }, [tracking, carrier, reset]);
+  }, [tracking, carrier, deviceId, reset]);
 
   useEffect(() => {
     fetchAllCarriers();
-  }, [fetchAllCarriers]);
+    fetchAllDevices();
+  }, [fetchAllCarriers, fetchAllDevices]);
 
 
   const pagesToShow = 5; // windowed buttons
@@ -194,7 +226,6 @@ const {
 
   return (
     <div>
-      
       {/* Welcome section */}
       <div className="mb-6 bg-white p-6 rounded-lg shadow-md">
         <p className="text-gray-600">
@@ -223,7 +254,7 @@ const {
 
   <h2 className="text-xl font-semibold mb-3">Recent Packages</h2>
       <div className="flex flex-col space-y-4 mb-6 bg-white p-6 rounded-lg shadow-md">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Tracking input */}
           <div className="col-span-1">
             <div className="relative">
@@ -241,11 +272,11 @@ const {
               />
             </div>
           </div>
-          
+
           {/* Carrier select */}
           <div className="col-span-1">
-            <Select 
-              value={carrier} 
+            <Select
+              value={carrier}
               onValueChange={(value) => {
                 console.log("Selected carrier:", value);
                 setCarrier(value);
@@ -259,6 +290,29 @@ const {
                 {availableCarriers.map((carrierName) => (
                   <SelectItem key={carrierName} value={carrierName}>
                     {carrierName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Device ID select */}
+          <div className="col-span-1">
+            <Select
+              value={deviceId}
+              onValueChange={(value) => {
+                console.log("Selected device:", value);
+                setDeviceId(value);
+              }}
+            >
+              <SelectTrigger className="w-full h-[38px]" id="device-select">
+                <SelectValue placeholder="All Devices" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Devices</SelectItem>
+                {availableDevices.map((device) => (
+                  <SelectItem key={device} value={device}>
+                    {getDeviceLabel(device)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -354,33 +408,56 @@ const {
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Tracking Number</th>
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Carrier</th>
           <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Timestamp</th>
+          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Device ID</th>
+          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Location</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-200 ">
         {error && (
           <tr>
-            <td colSpan={4} className="py-4 px-4 text-center text-sm text-red-500">
+            <td colSpan={6} className="py-4 px-4 text-center text-sm text-red-500">
               Error: {error}
             </td>
           </tr>
         )}
         {!loading && !error && packages.length === 0 && (
           <tr>
-            <td colSpan={4} className="py-4 px-4 text-center text-sm text-gray-500">
+            <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
               No packages found
             </td>
           </tr>
         )}
         {loading ?   <tr>
-            <td colSpan={4} className="py-4 px-4 text-center text-sm text-gray-500">
+            <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
               Loading...
             </td>
           </tr> : packages.map((pkg, index) => (
           <tr key={index} className="hover:bg-gray-50">
-            <td className="py-3 px-4 text-sm text-gray-900">{index + 1 + (page - 1) * 10}</td>
+            <td className="py-3 px-4 text-sm text-gray-900">{index + 1 + (page - 1) * 50}</td>
             <td className="py-3 px-4 text-sm text-gray-900">{pkg.tracking}</td>
             <td className="py-3 px-4 text-sm text-gray-900">{pkg.carrier}</td>
             <td className="py-3 px-4 text-sm text-gray-900">{pkg.timestamp}</td>
+            <td className="py-3 px-4 text-sm text-gray-900">
+              {getDeviceLabel(pkg.deviceId)}
+            </td>
+            <td className="py-3 px-4 text-sm">
+              {pkg.latitude && pkg.longitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${pkg.latitude},${pkg.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:text-indigo-800 underline flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  View Map
+                </a>
+              ) : (
+                <span className="text-gray-400">N/A</span>
+              )}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -389,8 +466,8 @@ const {
   
   <div className="mt-4 flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-lg">
     <div className="text-sm text-gray-700">
-      Showing <span className="font-medium">{packages.length ? (page - 1) * 10 + 1 : 0}</span> to{" "}
-      <span className="font-medium">{(page - 1) * 10 + packages.length}</span> of{" "}
+      Showing <span className="font-medium">{packages.length ? (page - 1) * 50 + 1 : 0}</span> to{" "}
+      <span className="font-medium">{(page - 1) * 50 + packages.length}</span> of{" "}
       <span className="font-medium">{totalCount || 0}</span> results
     </div>
     <div className="flex items-center space-x-2">
