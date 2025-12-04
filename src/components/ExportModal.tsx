@@ -210,7 +210,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         deviceId: string;
         latitude: string;
         longitude: string;
-        username: string;
         // date: string;
         // time: string;
       }
@@ -283,7 +282,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           deviceId: getDeviceLabel(data.deviceId),
           latitude: data.latitude?.toString() || 'N/A',
           longitude: data.longitude?.toString() || 'N/A',
-          username: data.username || 'N/A',
+          // username: data.username || 'N/A',
           // date: formattedDate,
           // time: formattedTime
         });
@@ -304,7 +303,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
 
       // Generate CSV content with proper escaping and formatting
       // Use quotes around all values to ensure proper Excel handling
-      let csvContent = 'Tracking Number,Carrier,Timestamp,Device ID,Latitude,Longitude,Username\n';
+      let csvContent = 'Tracking Number,Carrier,Timestamp,Device ID,Latitude,Longitude\n';
 
       items.forEach(item => {
         // Use Excel formula format ="value" to force Excel to treat tracking number as text
@@ -315,9 +314,8 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         const deviceId = `"${item.deviceId}"`;
         const latitude = `"${item.latitude}"`;
         const longitude = `"${item.longitude}"`;
-        const username = `"${item.username}"`;
 
-        csvContent += `${trackingNumber},${carrier},${timestamp},${deviceId},${latitude},${longitude},${username}\n`;
+        csvContent += `${trackingNumber},${carrier},${timestamp},${deviceId},${latitude},${longitude}\n`;
       });
 
       // Create a blob and download the CSV
