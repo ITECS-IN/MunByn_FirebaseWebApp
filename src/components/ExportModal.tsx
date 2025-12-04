@@ -40,36 +40,36 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
 
   // State for carrier filter
   const [selectedCarrier, setSelectedCarrier] = useState<string>("all_carriers");
-  
+
   // State for available carriers
   const [availableCarriers, setAvailableCarriers] = useState<string[]>([]);
-  
+
   // Error state for validation
   const [errors, setErrors] = useState<{
     dateRange?: string;
   }>({});
-  
+
   // Loading state
   const [loading, setLoading] = useState<boolean>(false);
-  
+
   // Function to handle date range changes
   // Now handled directly by DateRangePicker component
-  
+
   // Function to handle carrier filter changes
   const handleCarrierChange = (value: string) => {
     setSelectedCarrier(value);
   };
-  
+
   // Function to fetch all available carriers for filter dropdown
   const fetchAllCarriers = async () => {
     try {
       const db = getFirestore();
       const packagesCollection = collection(db, 'packages');
       const packagesSnapshot = await getDocs(packagesCollection);
-      
+
       const carriers = new Set<string>();
       const rawCarriers = new Set<string>();
-      
+
       packagesSnapshot.forEach(doc => {
         const data = doc.data();
 
@@ -82,10 +82,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         } else {
           carrierName = 'Unknown';
         }
-        
+
         // Store the exact carrier name as it appears in the database
         rawCarriers.add(carrierName);
-        
+
         // Also extract base carrier names (e.g., "FedEx Ground" from "FedEx Ground/Home")
         // This helps with filtering
         const baseCarrierMatch = carrierName.match(/^([^/]+)/);
@@ -95,7 +95,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           carriers.add(carrierName);
         }
       });
-      
+
       // Use raw carriers for the dropdown to show exact values
       setAvailableCarriers(Array.from(rawCarriers).sort());
       console.log('Available carriers:', Array.from(rawCarriers));
@@ -104,7 +104,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       toast.error(`Failed to load carriers: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
-  
+
   // Function to reset form state
   const resetForm = () => {
     setDateRange({
@@ -114,7 +114,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
     setSelectedCarrier('all_carriers');
     setErrors({});
   };
-  
+
   // Fetch carriers when modal opens and reset form
   useEffect(() => {
     if (isOpen) {
@@ -122,7 +122,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       resetForm();
     }
   }, [isOpen]);
-  
+
   // Function to export data as CSV
   const handleExportCSV = async () => {
     // Validate date range
@@ -133,17 +133,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       toast.error('Date range is required for export');
       return;
     }
-    
+
     setLoading(true);
     setErrors({});
-    
+
     try {
       const db = getFirestore();
       const packagesCollection = collection(db, 'packages');
-      
+
       // Build query constraints
       const queryConstraints: QueryConstraint[] = [];
-      
+
       // Apply date range filter if selected
       if (dateRange.startDate) {
         // Use 'yyyyMMdd' format without hyphens to match the database structure
@@ -151,33 +151,33 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         console.log('Using start date filter:', startDateStr);
         queryConstraints.push(where('dateYmd', '>=', startDateStr));
       }
-      
+
       if (dateRange.endDate) {
         // Use 'yyyyMMdd' format without hyphens to match the database structure
         const endDateStr = format(dateRange.endDate, 'yyyyMMdd');
         console.log('Using end date filter:', endDateStr);
         queryConstraints.push(where('dateYmd', '<=', endDateStr));
       }
-      
+
       // Apply carrier filter if selected
       // Instead of exact match, we'll filter on the client side
       // This gives us more flexibility with carrier name formats
       if (selectedCarrier && selectedCarrier !== 'all_carriers') {
         console.log('Will filter by carrier (client-side):', selectedCarrier);
       }
-      
+
       // Apply sorting
       queryConstraints.push(orderBy('timestamp', 'desc'));
-      
+
       // Execute query
       console.log('Date range:', dateRange);
       console.log('Selected carrier:', selectedCarrier);
-      
+
       // Log all query constraints for debugging
       queryConstraints.forEach((constraint, index) => {
         console.log(`Constraint ${index}:`, constraint);
       });
-      
+
       // For testing, let's try a simple query first to see if we get any data
       let q;
       if (queryConstraints.length > 0) {
@@ -188,10 +188,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         q = query(packagesCollection, orderBy('timestamp', 'desc'));
         console.log('Using simple query without filters');
       }
-      
+
       const querySnapshot = await getDocs(q);
       console.log('Query returned items:', querySnapshot.size);
-      
+
       // Log the first few documents to see what we're getting
       let count = 0;
       querySnapshot.forEach(doc => {
@@ -200,7 +200,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           count++;
         }
       });
-      
+
       // Process the results
       interface TrackingItem {
         // id: string;
@@ -216,11 +216,11 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       }
 
       const items: TrackingItem[] = [];
-      
+
       querySnapshot.forEach(doc => {
         const data = doc.data();
         console.log('Processing doc:', doc.id, 'dateYmd:', data.dateYmd);
-        
+
         // Check date filtering
         if (dateRange.startDate || dateRange.endDate) {
           const docDate = data.dateYmd;
@@ -239,7 +239,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
             }
           }
         }
-        
+
         // Extract carrier name
         let carrierName: string;
         if (typeof data.carrier === 'string') {
@@ -249,22 +249,22 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         } else {
           carrierName = 'Unknown';
         }
-        
+
         // Re-enable client-side filtering for carrier
         if (selectedCarrier && selectedCarrier !== 'all_carriers' && !carrierName.includes(selectedCarrier)) {
           console.log('Skipping item due to carrier mismatch:', carrierName, 'Selected:', selectedCarrier);
           return;
         }
-        
+
         // Log carrier matches for debugging
         if (selectedCarrier) {
           console.log('Including item with carrier:', carrierName, 'Selected:', selectedCarrier);
         }
-        
+
         // // Format date and time
         // let formattedDate = '';
         // let formattedTime = '';
-        
+
         // if (data.timestamp) {
         //   try {
         //     const date = new Date(data.timestamp);
@@ -274,7 +274,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         //     console.error('Error parsing date:', e);
         //   }
         // }
-        
+
         items.push({
           // id: doc.id,
           tracking: data.tracking || 'Unknown',
@@ -288,7 +288,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           // time: formattedTime
         });
       });
-      
+
       // Check if we found any items
       if (items.length === 0) {
         let errorMessage = 'No tracking records found';
@@ -301,14 +301,15 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
         toast.error(errorMessage);
         return;
       }
-      
+
       // Generate CSV content with proper escaping and formatting
       // Use quotes around all values to ensure proper Excel handling
       let csvContent = 'Tracking Number,Carrier,Timestamp,Device ID,Latitude,Longitude,Username\n';
 
       items.forEach(item => {
-        // Wrap tracking number in quotes and use ="value" format to force Excel to treat it as text
-        const trackingNumber = `"${item.tracking}"`;
+        // Use Excel formula format ="value" to force Excel to treat tracking number as text
+        // This prevents Excel from converting large numbers to scientific notation
+        const trackingNumber = `=\"${item.tracking}\"`;
         const carrier = `"${item.carrier.replace(/"/g, '""')}"`;
         const timestamp = `"${item.timestamp}"`;
         const deviceId = `"${item.deviceId}"`;
@@ -318,7 +319,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
 
         csvContent += `${trackingNumber},${carrier},${timestamp},${deviceId},${latitude},${longitude},${username}\n`;
       });
-      
+
       // Create a blob and download the CSV
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -328,28 +329,28 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Show success toast notification
       toast.success(`Successfully exported ${items.length} tracking records to CSV!`);
-      
+
       // Close modal after successful export
       onClose();
     } catch (err) {
       console.error('Error exporting CSV:', err);
       // Show detailed error toast notification
       const errorMessage = `Failed to export CSV: ${err instanceof Error ? err.message : 'Unknown error'}`;
-      
+
       // Add query details to console for debugging
       console.error('Error details - Date range:', dateRange);
       console.error('Error details - Selected carrier:', selectedCarrier);
-      
+
       // Show error toast
       toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Handle dialog close
   const handleDialogClose = (open: boolean) => {
     if (!open) {
@@ -357,7 +358,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
       onClose();
     }
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-md p-6">
@@ -367,7 +368,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
             Generate a CSV file with tracking data based on the selected filters. Date range is mandatory.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           <div className="text-sm text-muted-foreground">
             <span className="text-red-500">*</span> Required field
@@ -382,7 +383,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
                 Required for export
               </span>
             </div>
-            <DateRangePicker 
+            <DateRangePicker
               dateRange={dateRange}
               onDateRangeChange={(newRange) => {
                 setDateRange(newRange);
@@ -397,7 +398,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
               <p className="text-base text-red-500 mt-2">Please select both start and end dates</p>
             )}
           </div>
-          
+
           {/* Carrier Selection */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -424,10 +425,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
             </Select>
           </div>
         </div>
-        
+
         <DialogFooter className="flex justify-end gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => {
               resetForm();
               onClose();
