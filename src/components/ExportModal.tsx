@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { getDeviceLabel } from '../config/deviceLabels';
+import { getDeviceLabelFromCache } from '../config/deviceLabels';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -279,7 +279,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose }) => {
           tracking: data.tracking || 'Unknown',
           carrier: carrierName,
           timestamp: data.timestamp || 'N/A',
-          deviceId: getDeviceLabel(data.deviceId),
+          deviceId: getDeviceLabelFromCache(data.deviceId),
           latitude: data.latitude?.toString() || 'N/A',
           longitude: data.longitude?.toString() || 'N/A',
           // username: data.username || 'N/A',

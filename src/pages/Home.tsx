@@ -1,19 +1,10 @@
-import { DatePicker } from "@/components/ui/date-picker"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { db } from '@/config/firebase'
-import { getDeviceLabel } from '@/config/deviceLabels'
-import { collection, deleteDoc, getDocs } from 'firebase/firestore'
+import { getDeviceLabelFromCache } from '@/config/deviceLabels'
+import { getAllDevices } from '@/services/deviceService'
+import { collection, getDocs } from 'firebase/firestore'
 import { useCallback, useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import DashboardHeader from '../components/DashboardHeader'
 import KpiSummaryRow from '../components/KpiSummaryRow'
 import { Button } from '../components/ui/button'
@@ -29,11 +20,7 @@ const Home = () => {
   const [carrier, setCarrier] = useState("all"); // Initialize with "all" instead of empty string
   const [deviceId, setDeviceId] = useState("all"); // Device ID filter
 
-  // State for the delete modal
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [isDeleting, setIsDeleting] = useState(false);
+
 
   // 👇 Build dynamic filters based on input values
   const filters = [];
@@ -44,7 +31,7 @@ const Home = () => {
   if (deviceId && deviceId !== "all") filters.push({ field: "deviceId", op: "==", value: deviceId });
 
 
-const {
+  const {
     data: packages,
     loading,
     error,
@@ -76,56 +63,48 @@ const {
   );
 
 
-   const fetchAllCarriers = useCallback(async () => {
-      try {
-        const packagesCollection = collection(db, 'packages');
-        const packagesSnapshot = await getDocs(packagesCollection);
+  const fetchAllCarriers = useCallback(async () => {
+    try {
+      const packagesCollection = collection(db, 'packages');
+      const packagesSnapshot = await getDocs(packagesCollection);
 
-        const carriers = new Set<string>();
+      const carriers = new Set<string>();
 
-        packagesSnapshot.forEach(doc => {
-          const data = doc.data();
+      packagesSnapshot.forEach(doc => {
+        const data = doc.data();
 
-          // Extract carrier name
-          let carrierName: string;
-          if (typeof data.carrier === 'string') {
-            carrierName = data.carrier;
-          } else if (data.carrier && typeof data.carrier === 'object') {
-            carrierName = (data.carrier as { name?: string }).name || 'Unknown';
-          } else {
-            carrierName = 'Unknown';
-          }
+        // Extract carrier name
+        let carrierName: string;
+        if (typeof data.carrier === 'string') {
+          carrierName = data.carrier;
+        } else if (data.carrier && typeof data.carrier === 'object') {
+          carrierName = (data.carrier as { name?: string }).name || 'Unknown';
+        } else {
+          carrierName = 'Unknown';
+        }
 
-          carriers.add(carrierName);
-        });
+        carriers.add(carrierName);
+      });
 
-        setAvailableCarriers(Array.from(carriers).sort());
-      } catch (err) {
-        console.error('Error fetching carriers:', err);
-      }
-    }, []);
+      setAvailableCarriers(Array.from(carriers).sort());
+    } catch (err) {
+      console.error('Error fetching carriers:', err);
+    }
+  }, []);
 
-   const fetchAllDevices = useCallback(async () => {
-      try {
-        const packagesCollection = collection(db, 'packages');
-        const packagesSnapshot = await getDocs(packagesCollection);
+  const fetchAllDevices = useCallback(async () => {
+    try {
+      // Fetch devices from the devices collection instead of scanning all packages
+      const devices = await getAllDevices();
 
-        const devices = new Set<string>();
+      // Extract device IDs and sort them
+      const deviceIds = devices.map(device => device.deviceId).sort();
 
-        packagesSnapshot.forEach(doc => {
-          const data = doc.data();
-
-          // Extract device ID
-          if (data.deviceId && typeof data.deviceId === 'string') {
-            devices.add(data.deviceId);
-          }
-        });
-
-        setAvailableDevices(Array.from(devices).sort());
-      } catch (err) {
-        console.error('Error fetching devices:', err);
-      }
-    }, []);
+      setAvailableDevices(deviceIds);
+    } catch (err) {
+      console.error('Error fetching devices:', err);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -150,79 +129,9 @@ const {
       console.error('Error logging out:', error);
     }
   };
-  
-  const handleDeleteByDateRange = async () => {
-    // Validate that both dates are selected
-    if (!startDate || !endDate) {
-      toast('Please select both start and end dates');
-      return;
-    }
-    
-    // Validate that end date is not before start date
-    if (endDate < startDate) {
-      toast('End date cannot be before start date');
-      return;
-    }
-    
-    // Validate that the date range is not too large (e.g. more than 90 days)
-    const dayDifference = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-    if (dayDifference > 90) {
-      toast('Date range cannot exceed 90 days for safety reasons');
-      return;
-    }
-    
-    
-    try {
-      setIsDeleting(true);
 
-      // Format dates to Firestore timestamp format (start of day for startDate, end of day for endDate)
-      const startTimestamp = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate()
-      ).toISOString();
 
-      const endDateCopy = new Date(endDate);
-      endDateCopy.setHours(23, 59, 59, 999);
-      const endTimestamp = endDateCopy.toISOString();
 
-      // Create a query to get packages within the date range
-      const packagesRef = collection(db, 'packages');
-      const packagesSnapshot = await getDocs(packagesRef);
-
-      // Track deleted count for user feedback
-      let deletedCount = 0;
-
-      // Process each document
-      for (const doc of packagesSnapshot.docs) {
-        const packageData = doc.data();
-        
-        // Check if the package timestamp is within our range
-        if (packageData.timestamp >= startTimestamp && 
-            packageData.timestamp <= endTimestamp) {
-          await deleteDoc(doc.ref);
-          deletedCount++;
-        }
-      }
-
-      toast.success(`Successfully deleted ${deletedCount} packages`);
-      
-      // Close the modal after successful deletion
-      setShowDeleteModal(false);
-      
-      // Reset the form
-      setStartDate(undefined);
-      setEndDate(undefined);
-      
-      // Refresh the data
-      reset();
-    } catch (error) {
-      toast(`Error deleting packages: ${error}`);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-  
 
   return (
     <div>
@@ -233,8 +142,8 @@ const {
         </p>
 
         <div className="mt-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleLogout}
           >
             Sign Out
@@ -243,16 +152,16 @@ const {
       </div>
       {/* Dashboard Header with filters and controls */}
       <DashboardHeader />
-      
+
       {/* KPI Summary Row */}
       <KpiSummaryRow />
-      
+
       {/* Charts Section */}
       {/* <ChartsSection /> */}
-      
-   
 
-  <h2 className="text-xl font-semibold mb-3">Recent Packages</h2>
+
+
+      <h2 className="text-xl font-semibold mb-3">Recent Packages</h2>
       <div className="flex flex-col space-y-4 mb-6 bg-white p-6 rounded-lg shadow-md">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Tracking input */}
@@ -312,13 +221,13 @@ const {
                 <SelectItem value="all">All Devices</SelectItem>
                 {availableDevices.map((device) => (
                   <SelectItem key={device} value={device}>
-                    {getDeviceLabel(device)}
+                    {getDeviceLabelFromCache(device)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* Delete by range button */}
           {/*
           <div className="col-span-1 flex items-end">
@@ -334,7 +243,7 @@ const {
             </Button>
           </div>
           */}
-          
+
         </div>
       </div>
 
@@ -400,131 +309,128 @@ const {
       </Dialog>
       */}
 
-  <div className="overflow-x-auto rounded-lg shadow-md !h-[500px] !overflow-auto">
-    <table className="min-w-full bg-white">
-      <thead className="bg-gray-100 sticky top-0  ">
-        <tr>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">S.No</th>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Tracking Number</th>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Carrier</th>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Timestamp</th>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Device ID</th>
-          <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Location</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200 ">
-        {error && (
-          <tr>
-            <td colSpan={6} className="py-4 px-4 text-center text-sm text-red-500">
-              Error: {error}
-            </td>
-          </tr>
-        )}
-        {!loading && !error && packages.length === 0 && (
-          <tr>
-            <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
-              No packages found
-            </td>
-          </tr>
-        )}
-        {loading ?   <tr>
-            <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
-              Loading...
-            </td>
-          </tr> : packages.map((pkg, index) => (
-          <tr key={index} className="hover:bg-gray-50">
-            <td className="py-3 px-4 text-sm text-gray-900">{index + 1 + (page - 1) * 50}</td>
-            <td className="py-3 px-4 text-sm text-gray-900">{pkg.tracking}</td>
-            <td className="py-3 px-4 text-sm text-gray-900">{pkg.carrier}</td>
-            <td className="py-3 px-4 text-sm text-gray-900">{pkg.timestamp}</td>
-            <td className="py-3 px-4 text-sm text-gray-900">
-              {getDeviceLabel(pkg.deviceId)}
-            </td>
-            <td className="py-3 px-4 text-sm">
-              {pkg.latitude && pkg.longitude ? (
-                <a
-                  href={`https://www.google.com/maps?q=${pkg.latitude},${pkg.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-indigo-600 hover:text-indigo-800 underline flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  View Map
-                </a>
-              ) : (
-                <span className="text-gray-400">N/A</span>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-  
-  <div className="mt-4 flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-lg">
-    <div className="text-sm text-gray-700">
-      Showing <span className="font-medium">{packages.length ? (page - 1) * 50 + 1 : 0}</span> to{" "}
-      <span className="font-medium">{(page - 1) * 50 + packages.length}</span> of{" "}
-      <span className="font-medium">{totalCount || 0}</span> results
-    </div>
-    <div className="flex items-center space-x-2">
-      <button
-        onClick={prevPage}
-        disabled={!hasPrev}
-        className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-          hasPrev 
-            ? "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300" 
-            : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-        }`}
-        aria-label="Previous page"
-      >
-        <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Previous
-      </button>
-      
-      <div className="hidden md:flex space-x-1">
-        {totalPages &&
-          Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
-            <button
-              key={p}
-              onClick={() => goToPage(p)}
-              disabled={p === page}
-              className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                p === page
-                  ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 border"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 border"
-              }`}
-              aria-current={p === page ? "page" : undefined}
-            >
-              {p}
-            </button>
-          ))}
+      <div className="overflow-x-auto rounded-lg shadow-md !h-[500px] !overflow-auto">
+        <table className="min-w-full bg-white">
+          <thead className="bg-gray-100 sticky top-0  ">
+            <tr>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">S.No</th>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Tracking Number</th>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Carrier</th>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Timestamp</th>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Device ID</th>
+              <th className="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">Location</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 ">
+            {error && (
+              <tr>
+                <td colSpan={6} className="py-4 px-4 text-center text-sm text-red-500">
+                  Error: {error}
+                </td>
+              </tr>
+            )}
+            {!loading && !error && packages.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
+                  No packages found
+                </td>
+              </tr>
+            )}
+            {loading ? <tr>
+              <td colSpan={6} className="py-4 px-4 text-center text-sm text-gray-500">
+                Loading...
+              </td>
+            </tr> : packages.map((pkg, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="py-3 px-4 text-sm text-gray-900">{index + 1 + (page - 1) * 50}</td>
+                <td className="py-3 px-4 text-sm text-gray-900">{pkg.tracking}</td>
+                <td className="py-3 px-4 text-sm text-gray-900">{pkg.carrier}</td>
+                <td className="py-3 px-4 text-sm text-gray-900">{pkg.timestamp}</td>
+                <td className="py-3 px-4 text-sm text-gray-900">
+                  {getDeviceLabelFromCache(pkg.deviceId)}
+                </td>
+                <td className="py-3 px-4 text-sm">
+                  {pkg.latitude && pkg.longitude ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${pkg.latitude},${pkg.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-800 underline flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      View Map
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      
-      <button
-        onClick={nextPage}
-        disabled={!hasNext}
-        className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-          hasNext 
-            ? "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300" 
-            : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-        }`}
-        aria-label="Next page"
-      >
-        Next
-        <svg className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </div>
-  </div>
 
-      
+      <div className="mt-4 flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-lg">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{packages.length ? (page - 1) * 50 + 1 : 0}</span> to{" "}
+          <span className="font-medium">{(page - 1) * 50 + packages.length}</span> of{" "}
+          <span className="font-medium">{totalCount || 0}</span> results
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={prevPage}
+            disabled={!hasPrev}
+            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${hasPrev
+              ? "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+              }`}
+            aria-label="Previous page"
+          >
+            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Previous
+          </button>
+
+          <div className="hidden md:flex space-x-1">
+            {totalPages &&
+              Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  disabled={p === page}
+                  className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${p === page
+                    ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 border"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 border"
+                    }`}
+                  aria-current={p === page ? "page" : undefined}
+                >
+                  {p}
+                </button>
+              ))}
+          </div>
+
+          <button
+            onClick={nextPage}
+            disabled={!hasNext}
+            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-md ${hasNext
+              ? "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+              }`}
+            aria-label="Next page"
+          >
+            Next
+            <svg className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+
     </div>
   )
 }
